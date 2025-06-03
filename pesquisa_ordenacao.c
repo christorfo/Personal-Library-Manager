@@ -1,134 +1,173 @@
 #include <stdio.h>
-#include <stdlib.h> // Para qsort (se usar) e malloc/free
-#include <string.h>
+#include <stdlib.h> // Para qsort, malloc, free
+#include <string.h> // Para strstr, strcmp
 #include "pesquisa_ordenacao.h"
-#include "livro.h" // Para exibir_livro
+#include "livro.h"         // Para struct Livro e exibir_livro (se usado aqui)
+#include "lista_livros.h"  // Para ColecaoLivros, NoLista
 
-// --- ESQUELETOS DETALHADOS (VOCÊ IMPLEMENTA) ---
+// --- FUNÇÕES DE PESQUISA E ORDENAÇÃO APRIMORADAS ---
 
-NoLista* pesquisar_livro_por_titulo(const ColecaoLivros* colecao, const char* titulo_busca) {
-    // Lógica: Verificar se a coleção ou o título são NULL.
+/**
+ * @brief Pesquisa o primeiro livro na coleção cujo título contém a string de busca.
+ * A busca é case-sensitive e considera substrings (ex: buscar por "Senhor" pode encontrar "O Senhor dos Anéis").
+ *
+ * @param colecao Ponteiro constante para a ColecaoLivros a ser pesquisada.
+ * @param titulo_busca String constante contendo o título (ou parte dele) a ser buscado.
+ * @return const Livro* Ponteiro constante para os dados do primeiro livro encontrado,
+ * ou NULL se nenhum livro corresponder, ou se os parâmetros forem inválidos.
+ * @warning O ponteiro retornado aponta para dados internos da lista.
+ * Não modifique o conteúdo apontado e não libere este ponteiro.
+ * @note Se múltiplos livros corresponderem, apenas o primeiro encontrado na ordem da lista é retornado.
+ * Para encontrar todos, seria necessária uma função diferente (ex: iterar e aplicar um callback).
+ */
+const Livro* pesquisar_livro_por_titulo(const ColecaoLivros* colecao, const char* titulo_busca) {
     if (colecao == NULL || titulo_busca == NULL) {
         return NULL;
     }
 
-    NoLista* atual = colecao->inicio;
-    // Lógica: Percorrer a lista.
+    const NoLista* atual = colecao->inicio;
     while (atual != NULL) {
-        // Lógica: Comparar o título do livro atual com o título_busca.
-        //         Usar strstr() para busca de substring ou strcmp() para correspondência exata (case sensitive).
-        //         Para case insensitive, você precisaria converter ambas as strings para minúsculas/maiúsculas antes de comparar.
-        if (strstr(atual->dadosLivro.titulo, titulo_busca) != NULL) { // Exemplo com strstr (encontra se titulo_busca é parte do título do livro)
-        // if (strcmp(atual->dadosLivro.titulo, titulo_busca) == 0) { // Para correspondência exata
-            return atual; // Retorna o nó onde o livro foi encontrado
+        // Usar strstr para busca de substring (case-sensitive)
+        if (strstr(atual->dadosLivro.titulo, titulo_busca) != NULL) {
+            return &(atual->dadosLivro); // Retorna ponteiro para os dados do livro no nó
         }
+        // Para correspondência exata (case-sensitive):
+        // if (strcmp(atual->dadosLivro.titulo, titulo_busca) == 0) {
+        //     return &(atual->dadosLivro);
+        // }
         atual = atual->proximo;
     }
-    // Lógica: Se não encontrar, retornar NULL.
-    return NULL;
-    // TODO: Se múltiplos livros puderem ter o mesmo título (ou parte dele),
-    //       esta função só retorna o primeiro. Poderia ser modificada para
-    //       retornar uma lista de resultados ou imprimir todos os encontrados.
+    return NULL; // Não encontrado
 }
 
-
-// Função auxiliar para qsort, se for ordenar um vetor de ponteiros para Livro
-int comparar_livros_por_titulo(const void* a, const void* b) {
-    // Lógica: Converte os ponteiros void* para ponteiros para ponteiros para Livro (Livro**).
-    //         Depois, acessa o campo 'titulo' e usa strcmp.
-    Livro* livro_a = *(Livro**)a; // Dereferencia para obter o Livro*
-    Livro* livro_b = *(Livro**)b;
+/**
+ * @brief Função de comparação para qsort, para ordenar Livros por título (alfabética, case-sensitive).
+ * Espera que 'a' e 'b' sejam ponteiros para structs Livro.
+ *
+ * @param a Ponteiro void para o primeiro Livro.
+ * @param b Ponteiro void para o segundo Livro.
+ * @return int <0 se o título de 'a' vem antes de 'b', 0 se são iguais, >0 se 'a' vem depois de 'b'.
+ */
+static int comparar_livros_qsort_por_titulo(const void* a, const void* b) {
+    const Livro* livro_a = (const Livro*)a;
+    const Livro* livro_b = (const Livro*)b;
     return strcmp(livro_a->titulo, livro_b->titulo);
 }
 
-int comparar_livros_por_ano(const void* a, const void* b) {
-    // Lógica: Similar ao anterior, mas compara 'anoPublicacao'.
-    Livro* livro_a = *(Livro**)a;
-    Livro* livro_b = *(Livro**)b;
+/**
+ * @brief Função de comparação para qsort, para ordenar Livros por ano de publicação (crescente).
+ * Espera que 'a' e 'b' sejam ponteiros para structs Livro.
+ *
+ * @param a Ponteiro void para o primeiro Livro.
+ * @param b Ponteiro void para o segundo Livro.
+ * @return int <0 se o ano de 'a' é menor que 'b', 0 se são iguais, >0 se o ano de 'a' é maior que 'b'.
+ */
+static int comparar_livros_qsort_por_ano(const void* a, const void* b) {
+    const Livro* livro_a = (const Livro*)a;
+    const Livro* livro_b = (const Livro*)b;
+
     if (livro_a->anoPublicacao < livro_b->anoPublicacao) return -1;
     if (livro_a->anoPublicacao > livro_b->anoPublicacao) return 1;
     return 0;
 }
 
-
+/**
+ * @brief Ordena os dados dos livros na coleção por título (ordem alfabética, case-sensitive).
+ * A função modifica a ordem dos dados Livro DENTRO dos nós existentes da lista encadeada.
+ * A estrutura da lista (os nós e seus ponteiros 'proximo') não é alterada, apenas o conteúdo 'dadosLivro'.
+ *
+ * @param colecao Ponteiro para a ColecaoLivros a ser ordenada.
+ */
 void ordenar_colecao_por_titulo(ColecaoLivros* colecao) {
-    // Lógica: Verificar se a coleção é NULL ou tem menos de 2 elementos (já está ordenada).
     if (colecao == NULL || colecao->quantidade < 2) {
+        return; // Nada a ordenar ou coleção inválida
+    }
+
+    // 1. Alocar um array temporário para armazenar as structs Livro
+    Livro* array_de_livros = (Livro*) malloc(colecao->quantidade * sizeof(Livro));
+    if (array_de_livros == NULL) {
+        perror("ERRO (ordenar_colecao_por_titulo): Falha ao alocar array temporario");
         return;
     }
 
-    // Lógica: Abordagem 1: Copiar ponteiros para Livro para um vetor.
-    //         Alocar um vetor de ponteiros para Livro (Livro**) com tamanho colecao->quantidade.
-    Livro** array_de_ponteiros = (Livro**) malloc(colecao->quantidade * sizeof(Livro*));
-    if (array_de_ponteiros == NULL) {
-        perror("Erro ao alocar vetor para ordenacao");
-        return;
-    }
-
-    // Lógica: Preencher este vetor com os endereços dos 'dadosLivro' de cada nó da lista.
+    // 2. Copiar os dados dos livros da lista para o array
     NoLista* atual = colecao->inicio;
-    int i = 0;
-    while (atual != NULL && i < colecao->quantidade) {
-        array_de_ponteiros[i++] = &(atual->dadosLivro);
+    for (int i = 0; i < colecao->quantidade; i++) {
+        if (atual == NULL) { // Verificação de segurança, não deveria acontecer se colecao->quantidade está correto
+            fprintf(stderr, "ERRO (ordenar_colecao_por_titulo): Inconsistencia na quantidade de livros.\n");
+            free(array_de_livros);
+            return;
+        }
+        array_de_livros[i] = atual->dadosLivro; // Copia a struct
         atual = atual->proximo;
     }
-    
-    // Lógica: Usar qsort (da stdlib.h) para ordenar o vetor de ponteiros.
-    //         Você precisará de uma função de comparação (ex: comparar_livros_por_titulo).
-    qsort(array_de_ponteiros, colecao->quantidade, sizeof(Livro*), comparar_livros_por_titulo);
 
-    // Lógica: Após ordenar o vetor, você pode:
-    //         Opção A: Apenas exibir os livros na ordem do vetor (sem modificar a lista original).
-    printf("\n--- Livros Ordenados por Titulo (sem alterar a lista original) ---\n");
-    for (i = 0; i < colecao->quantidade; i++) {
-        exibir_livro(array_de_ponteiros[i]);
+    // 3. Ordenar o array de structs Livro usando qsort
+    qsort(array_de_livros, colecao->quantidade, sizeof(Livro), comparar_livros_qsort_por_titulo);
+
+    // 4. Copiar os dados ordenados de volta para os nós da lista original
+    atual = colecao->inicio;
+    for (int i = 0; i < colecao->quantidade; i++) {
+         if (atual == NULL) { // Verificação de segurança
+            fprintf(stderr, "ERRO (ordenar_colecao_por_titulo): Inconsistencia ao copiar dados de volta.\n");
+            break; 
+        }
+        atual->dadosLivro = array_de_livros[i]; // Copia a struct ordenada
+        atual = atual->proximo;
     }
-    printf("--- Fim da Lista Ordenada ---\n");
 
-    //         Opção B (Mais complexo): Reconstruir a lista encadeada com base na ordem do vetor.
-    //                  Isso envolveria realocar os nós ou, mais cuidadosamente,
-    //                  pegar os dados dos Livros no vetor e colocá-los em nós
-    //                  em uma nova lista ordenada, depois substituindo a original.
-    //                  Ou, se os 'dadosLivro' fossem ponteiros para Livro,
-    //                  poderia reordenar os nós da lista diretamente (muito complexo).
-    //                  Para este projeto, a Opção A (exibir ordenado) é suficiente para demonstrar o conceito.
+    // 5. Liberar a memória do array temporário
+    free(array_de_livros);
 
-    // Lógica: Liberar a memória do vetor de ponteiros.
-    free(array_de_ponteiros);
-
-    // TODO: Se optar por modificar a lista original, a lógica aqui seria bem mais envolvida,
-    //       possivelmente implementando um algoritmo de ordenação diretamente na lista encadeada
-    //       (ex: selection sort adaptado, merge sort adaptado) ou a reconstrução mencionada.
-    //       A abordagem com `qsort` em um array auxiliar é geralmente mais simples e eficiente
-    //       para demonstrar o uso de um algoritmo de ordenação robusto.
+    // printf("INFO: Colecao ordenada por titulo.\n"); // Opcional: feedback
 }
 
+/**
+ * @brief Ordena os dados dos livros na coleção por ano de publicação (ordem crescente).
+ * A função modifica a ordem dos dados Livro DENTRO dos nós existentes da lista encadeada.
+ *
+ * @param colecao Ponteiro para a ColecaoLivros a ser ordenada.
+ */
 void ordenar_colecao_por_ano(ColecaoLivros* colecao) {
-    // Lógica: Similar a ordenar_colecao_por_titulo, mas usando comparar_livros_por_ano.
     if (colecao == NULL || colecao->quantidade < 2) {
+        return; // Nada a ordenar ou coleção inválida
+    }
+
+    // 1. Alocar array temporário
+    Livro* array_de_livros = (Livro*) malloc(colecao->quantidade * sizeof(Livro));
+    if (array_de_livros == NULL) {
+        perror("ERRO (ordenar_colecao_por_ano): Falha ao alocar array temporario");
         return;
     }
 
-    Livro** array_de_ponteiros = (Livro**) malloc(colecao->quantidade * sizeof(Livro*));
-    if (array_de_ponteiros == NULL) {
-        perror("Erro ao alocar vetor para ordenacao por ano");
-        return;
-    }
-
+    // 2. Copiar da lista para o array
     NoLista* atual = colecao->inicio;
-    int i = 0;
-    while (atual != NULL && i < colecao->quantidade) {
-        array_de_ponteiros[i++] = &(atual->dadosLivro);
+    for (int i = 0; i < colecao->quantidade; i++) {
+        if (atual == NULL) {
+            fprintf(stderr, "ERRO (ordenar_colecao_por_ano): Inconsistencia na quantidade de livros.\n");
+            free(array_de_livros);
+            return;
+        }
+        array_de_livros[i] = atual->dadosLivro;
         atual = atual->proximo;
     }
-    
-    qsort(array_de_ponteiros, colecao->quantidade, sizeof(Livro*), comparar_livros_por_ano);
 
-    printf("\n--- Livros Ordenados por Ano (sem alterar a lista original) ---\n");
-    for (i = 0; i < colecao->quantidade; i++) {
-        exibir_livro(array_de_ponteiros[i]);
+    // 3. Ordenar o array
+    qsort(array_de_livros, colecao->quantidade, sizeof(Livro), comparar_livros_qsort_por_ano);
+
+    // 4. Copiar de volta para a lista
+    atual = colecao->inicio;
+    for (int i = 0; i < colecao->quantidade; i++) {
+        if (atual == NULL) {
+            fprintf(stderr, "ERRO (ordenar_colecao_por_ano): Inconsistencia ao copiar dados de volta.\n");
+            break;
+        }
+        atual->dadosLivro = array_de_livros[i];
+        atual = atual->proximo;
     }
-    printf("--- Fim da Lista Ordenada ---\n");
 
-    free(array_de_ponteiros);
+    // 5. Liberar array
+    free(array_de_livros);
+
+    // printf("INFO: Colecao ordenada por ano.\n"); // Opcional: feedback
 }
