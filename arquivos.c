@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "arquivos.h"
-#include "livro.h" // Para struct Livro
+#include "livro.h" // Para struct Livro, NoLista, ColecaoLivros, adicionar_livro_colecao
 
-// --- ESQUELETOS DETALHADOS (VOCÊ IMPLEMENTA) ---
+// --- FUNÇÕES IMPLEMENTADAS ---
 
 int salvar_colecao_texto(const ColecaoLivros* colecao, const char* nome_arquivo) {
     // Lógica: Verificar se a coleção ou o nome do arquivo são NULL.
@@ -25,11 +25,7 @@ int salvar_colecao_texto(const ColecaoLivros* colecao, const char* nome_arquivo)
     // Lógica: Percorrer a lista de livros da coleção.
     while (atual != NULL) {
         // Lógica: Para cada livro, escrever seus dados formatados no arquivo.
-        //         Exemplo de formato (CSV - Comma Separated Values):
-        //         "Titulo","Autor",Ano,"ISBN","Genero"\n
-        //         Use fprintf. Cuidado com títulos/autores que podem ter vírgulas.
-        //         Uma forma mais segura para strings é usar aspas ou outro delimitador menos comum.
-        //         Para simplicidade, vamos assumir que não têm caracteres problemáticos ou usar aspas.
+        // Formato CSV: "Titulo","Autor",Ano,"ISBN","Genero"\n
         fprintf(arquivo, "\"%s\",\"%s\",%d,\"%s\",\"%s\"\n",
                 atual->dadosLivro.titulo,
                 atual->dadosLivro.autor,
@@ -50,20 +46,15 @@ int carregar_colecao_texto(ColecaoLivros* colecao, const char* nome_arquivo) {
         fprintf(stderr, "Erro: Colecao ou nome de arquivo nulos para carregar.\n");
         return 0; // Falha
     }
-     // Lógica: Considerar limpar a coleção atual antes de carregar novos dados,
-     //         ou adicionar aos existentes. Para este esqueleto, vamos assumir que
-     //         a coleção está vazia ou que os novos livros serão adicionados.
-     //         Se for para substituir: destruir_colecao(colecao); colecao = criar_colecao();
-     //         Mas como 'colecao' é passado por valor (ponteiro), isso não recriaria no chamador.
-     //         O chamador teria que cuidar disso, ou esta função teria que limpar os nós existentes.
-     //         Para simplificar o esqueleto: apenas adiciona.
+    // Nota: Considerar limpar a coleção atual antes de carregar.
+    // Para este exemplo, apenas adiciona os livros à coleção existente.
 
     // Lógica: Abrir o arquivo em modo de leitura ("r").
     FILE* arquivo = fopen(nome_arquivo, "r");
     // Lógica: Verificar se o arquivo foi aberto com sucesso.
     if (arquivo == NULL) {
         perror("Erro ao abrir arquivo para leitura (pode nao existir)");
-        return 0; // Falha (arquivo pode não existir, o que não é necessariamente um erro fatal)
+        return 0; // Falha (arquivo pode não existir, tratado como coleção vazia)
     }
 
     Livro livro_temp;
@@ -72,10 +63,10 @@ int carregar_colecao_texto(ColecaoLivros* colecao, const char* nome_arquivo) {
     // Lógica: Ler o arquivo linha por linha.
     while (fgets(linha, sizeof(linha), arquivo) != NULL) {
         // Lógica: Para cada linha, parsear os dados para preencher uma struct Livro temporária.
-        //         Usar sscanf para parsear a linha de acordo com o formato usado em salvar_colecao_texto.
-        //         Ex: sscanf(linha, "\"%[^\"]\",\"%[^\"]\",%d,\"%[^\"]\",\"%[^\"]\"", ...);
-        //         %[^\"] lê até encontrar uma aspa.
-        //         Cuidado com o buffer overflow nos campos de livro_temp.
+        // Usar sscanf para parsear a linha de acordo com o formato usado em salvar_colecao_texto.
+        // %[^\"] lê até encontrar uma aspa.
+        // Os números (99, 99, 13, 49) são para prevenir buffer overflow nos campos de livro_temp,
+        // assumindo que os campos string na struct Livro têm tamanho 100, 100, 14, 50 respectivamente.
         int campos_lidos = sscanf(linha, "\"%99[^\"]\",\"%99[^\"]\",%d,\"%13[^\"]\",\"%49[^\"]\"",
                livro_temp.titulo,
                livro_temp.autor,
@@ -85,9 +76,10 @@ int carregar_colecao_texto(ColecaoLivros* colecao, const char* nome_arquivo) {
         
         if (campos_lidos == 5) { // Verifica se todos os 5 campos foram lidos corretamente
             // Lógica: Adicionar o livro_temp à coleção usando adicionar_livro_colecao.
+            // Assumindo que adicionar_livro_colecao é uma função definida em livro.h/livro.c
             adicionar_livro_colecao(colecao, livro_temp);
         } else {
-            //fprintf(stderr, "Aviso: Linha mal formatada no arquivo: %s", linha);
+            //fprintf(stderr, "Aviso: Linha mal formatada ou em branco no arquivo: %s", linha);
             // Pode ser uma linha em branco no final do arquivo, ou um erro de formatação.
         }
     }
@@ -112,24 +104,17 @@ int salvar_colecao_binario(const ColecaoLivros* colecao, const char* nome_arquiv
         return 0;
     }
 
-    // Lógica: Primeiro, pode ser útil salvar a quantidade de livros.
+    // Opcional: Salvar a quantidade de livros primeiro.
     // fwrite(&(colecao->quantidade), sizeof(int), 1, arquivo);
 
     NoLista* atual = colecao->inicio;
     // Lógica: Percorrer a lista.
     while (atual != NULL) {
         // Lógica: Para cada livro, escrever a struct Livro inteira no arquivo usando fwrite.
-        // size_t itens_escritos = fwrite(&(atual->dadosLivro), sizeof(Livro), 1, arquivo);
-        // if (itens_escritos != 1) {
-        //     perror("Erro ao escrever livro em arquivo binario");
-        //     fclose(arquivo);
-        //     return 0; // Falha na escrita
-        // }
-        // TODO: Implementar a escrita do struct Livro.
-         if (fwrite(&(atual->dadosLivro), sizeof(Livro), 1, arquivo) != 1) {
+        if (fwrite(&(atual->dadosLivro), sizeof(Livro), 1, arquivo) != 1) {
             perror("Erro ao escrever livro em arquivo binario");
             fclose(arquivo);
-            return 0;
+            return 0; // Falha na escrita
         }
         atual = atual->proximo;
     }
@@ -145,7 +130,7 @@ int carregar_colecao_binario(ColecaoLivros* colecao, const char* nome_arquivo) {
         fprintf(stderr, "Erro: Colecao ou nome de arquivo nulos para carregar binario.\n");
         return 0;
     }
-    // Lógica: Mesma consideração sobre limpar a coleção atual que em carregar_colecao_texto.
+    // Nota: Mesma consideração sobre limpar a coleção atual que em carregar_colecao_texto.
 
     // Lógica: Abrir o arquivo em modo de leitura binária ("rb").
     FILE* arquivo = fopen(nome_arquivo, "rb");
@@ -156,21 +141,18 @@ int carregar_colecao_binario(ColecaoLivros* colecao, const char* nome_arquivo) {
         return 0; 
     }
 
-    // Lógica: Se você salvou a quantidade de livros, leia-a primeiro.
+    // Opcional: Se você salvou a quantidade de livros, leia-a primeiro.
     // int quantidade_a_ler;
-    // if (fread(&quantidade_a_ler, sizeof(int), 1, arquivo) != 1) { ... }
+    // if (fread(&quantidade_a_ler, sizeof(int), 1, arquivo) != 1) { /* erro */ }
+    // for (int i = 0; i < quantidade_a_ler; ++i) { /* ler livro */ }
 
     Livro livro_temp;
     // Lógica: Ler os livros do arquivo um por um usando fread, até o fim do arquivo.
-    //         fread retorna o número de itens lidos com sucesso.
-    // while (fread(&livro_temp, sizeof(Livro), 1, arquivo) == 1) {
-    //     adicionar_livro_colecao(colecao, livro_temp);
-    // }
-    // TODO: Implementar a leitura do struct Livro e adicionar à coleção.
+    // fread retorna o número de itens lidos com sucesso.
     while (fread(&livro_temp, sizeof(Livro), 1, arquivo) == 1) {
+        // Assumindo que adicionar_livro_colecao é uma função definida em livro.h/livro.c
         adicionar_livro_colecao(colecao, livro_temp);
     }
-
 
     // Lógica: Fechar o arquivo.
     fclose(arquivo);
