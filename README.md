@@ -1,12 +1,12 @@
-# Personal Library Manager
+# Personal Library Manager 📚
 
-Este programa é um gerenciador de biblioteca pessoal desenvolvido em C. Ele permite ao usuário catalogar seus livros, realizar buscas, ordená-los por diferentes critérios, manter um histórico de livros consultados e uma lista de desejos. Além disso, oferece a funcionalidade de salvar e carregar os dados da biblioteca em arquivos.
+Este programa é um gerenciador de biblioteca pessoal desenvolvido em C, utilizando estruturas de dados como **Listas Encadeadas, Pilhas e Filas**. Ele permite ao usuário catalogar seus livros, realizar buscas, ordená-los por diferentes critérios, manter um histórico de livros consultados e uma lista de desejos. Além disso, oferece a funcionalidade de salvar e carregar os dados da biblioteca em arquivos.
 
 ## Funcionalidades Principais
 
 * **Gerenciamento de Livros**:
-    * Adicionar novos livros à coleção.
-    * Remover livros existentes (via ISBN).
+    * Adicionar novos livros à coleção (com verificação de ISBN duplicado).
+    * Remover livros existentes (via ISBN) com diálogo de confirmação.
     * Listar todos os livros catalogados.
 * **Pesquisa**:
     * Buscar livros por ISBN (identificador único).
@@ -14,10 +14,10 @@ Este programa é um gerenciador de biblioteca pessoal desenvolvido em C. Ele per
 * **Ordenação**:
     * Ordenar a coleção de livros por título.
     * Ordenar a coleção de livros por ano de publicação.
-    * (Estrutura pronta para ordenação por autor).
+    * Ordenar a coleção de livros por autor.
 * **Recursos Adicionais**:
-    * **Histórico de Consultas**: Mantém uma pilha dos ISBNs dos livros recentemente adicionados ou consultados.
-    * **Lista de Desejos**: Permite ao usuário manter uma fila de livros que deseja adquirir.
+    * **Histórico de Consultas**: Mantém uma pilha (LIFO) dos ISBNs dos livros recentemente adicionados ou consultados.
+    * **Lista de Desejos**: Permite ao usuário manter uma fila (FIFO) de livros que deseja adquirir.
 * **Persistência de Dados**:
     * Salvar a coleção de livros em arquivo de texto (`biblioteca.txt`).
     * Carregar a coleção de livros de um arquivo de texto.
@@ -25,7 +25,7 @@ Este programa é um gerenciador de biblioteca pessoal desenvolvido em C. Ele per
     * Carregar a coleção de livros de um arquivo binário.
     * Carregamento automático de dados ao iniciar (priorizando o arquivo binário) e salvamento automático ao sair.
 * **Interface**:
-    * Menu interativo via console para fácil utilização.
+    * Menu interativo via console para fácil utilização, com limpeza de tela para melhor experiência.
 
 ## Estrutura do Projeto
 
@@ -41,8 +41,11 @@ O projeto é modularizado em diferentes arquivos para melhor organização:
 
 ## Como Compilar e Executar
 
+Para compilar o projeto com o GCC, utilize o seguinte comando. As flags recomendadas ativam avisos úteis e incluem informações de debug.
 
 ```bash
+# Comando de compilação
 gcc -o biblioteca_pessoal main.c livro.c lista_livros.c pilha_historico.c fila_desejos.c arquivos.c pesquisa_ordenacao.c -Wall -Wextra -g
+
+# Para executar o programa
 ./biblioteca_pessoal
-```
