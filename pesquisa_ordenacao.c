@@ -72,6 +72,21 @@ static int comparar_livros_qsort_por_ano(const void* a, const void* b) {
 }
 
 /**
+ * @brief Função de comparação para qsort, para ordenar Livros por autor (alfabética, case-sensitive).
+ * Espera que 'a' e 'b' sejam ponteiros para structs Livro.
+ *
+ * @param a Ponteiro void para o primeiro Livro.
+ * @param b Ponteiro void para o segundo Livro.
+ * @return int <0 se o autor de 'a' vem antes de 'b', 0 se são iguais, >0 se 'a' vem depois de 'b'.
+ */
+static int comparar_livros_qsort_por_autor(const void* a, const void* b) {
+    const Livro* livro_a = (const Livro*)a;
+    const Livro* livro_b = (const Livro*)b;
+    return strcmp(livro_a->autor, livro_b->autor);
+}
+
+
+/**
  * @brief Ordena os dados dos livros na coleção por título (ordem alfabética, case-sensitive).
  * A função modifica a ordem dos dados Livro DENTRO dos nós existentes da lista encadeada.
  * A estrutura da lista (os nós e seus ponteiros 'proximo') não é alterada, apenas o conteúdo 'dadosLivro'.
@@ -170,4 +185,54 @@ void ordenar_colecao_por_ano(ColecaoLivros* colecao) {
     free(array_de_livros);
 
     // printf("INFO: Colecao ordenada por ano.\n"); // Opcional: feedback
+}
+
+/**
+ * @brief Ordena os dados dos livros na coleção por autor (ordem alfabética, case-sensitive).
+ * A função modifica a ordem dos dados Livro DENTRO dos nós existentes da lista encadeada.
+ *
+ * @param colecao Ponteiro para a ColecaoLivros a ser ordenada.
+ */
+void ordenar_colecao_por_autor(ColecaoLivros* colecao) {
+    if (colecao == NULL || colecao->quantidade < 2) {
+        return; // Nada a ordenar ou coleção inválida
+    }
+
+    // 1. Alocar array temporário
+    Livro* array_de_livros = (Livro*) malloc(colecao->quantidade * sizeof(Livro));
+    if (array_de_livros == NULL) {
+        perror("ERRO (ordenar_colecao_por_autor): Falha ao alocar array temporario");
+        return;
+    }
+
+    // 2. Copiar da lista para o array
+    NoLista* atual = colecao->inicio;
+    for (int i = 0; i < colecao->quantidade; i++) {
+        if (atual == NULL) {
+            fprintf(stderr, "ERRO (ordenar_colecao_por_autor): Inconsistencia na quantidade de livros.\n");
+            free(array_de_livros);
+            return;
+        }
+        array_de_livros[i] = atual->dadosLivro;
+        atual = atual->proximo;
+    }
+
+    // 3. Ordenar o array
+    qsort(array_de_livros, colecao->quantidade, sizeof(Livro), comparar_livros_qsort_por_autor);
+
+    // 4. Copiar de volta para a lista
+    atual = colecao->inicio;
+    for (int i = 0; i < colecao->quantidade; i++) {
+        if (atual == NULL) {
+            fprintf(stderr, "ERRO (ordenar_colecao_por_autor): Inconsistencia ao copiar dados de volta.\n");
+            break;
+        }
+        atual->dadosLivro = array_de_livros[i];
+        atual = atual->proximo;
+    }
+
+    // 5. Liberar array
+    free(array_de_livros);
+
+    // printf("INFO: Colecao ordenada por autor.\n"); // Opcional: feedback
 }
